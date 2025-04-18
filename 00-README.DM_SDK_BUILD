@@ -1,0 +1,30 @@
+== Prerequisites
+
+GNU ARM toolchain can be downloaded from
+  https://developer.arm.com/open-source/gnu-toolchain/gnu-rm/downloads.
+Last version tested was gcc-arm-none-eabi-10-2020-q4-major. 
+
+Make is usually available in some base development package, but you
+can install it directly, e.g. for debian like systems
+  sudo apt-get install make
+
+LPC flashing utility lpc21isp.
+  sudo apt-get install lpc21isp
+
+
+== Build
+
+Add ARM toolchain bin/ directory to PATH.
+(e.g. ~/arm/gcc-arm-none-eabi-7-2018-q2-update/bin)
+
+To build the program run make in the base dm_lpc111x_sdk/ directory .
+
+That creates firmware.hex file which can be programmed usual way
+using (mind the correct /dev/ttyUSB0 port)
+  lpc21isp -control /dev/ttyUSB0 115200 12000
+and pressing RESET through hole at the back of the calculator.
+
+You can eventually use ./pgm utility as a shortcut.
+
+
+

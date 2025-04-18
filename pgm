@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ "$1" = -h ]; then
+  cat << OI
+
+Usage: $0 [-h] [-d <n>] [<firmware>]
+
+ -d <n>  - use port /dev/ttyUSB<n>
+
+OI
+  exit 1
+fi
+
+port=0
+if [ "$1" = -d ]; then
+  port=$2
+  shift 2
+fi
+
+f=${1:-firmware.bin}
+
+if [ ! -f $f ]; then
+  echo "Cannot open firmware file $f"
+  exit 1
+fi
+
+typ=`sed -e 's|^.*\.||' <<< "$f"`
+
+echo "Programming firmware '$f' as $typ"
+
+lpc21isp -control -$typ $f /dev/ttyUSB$port 115200 12000
+

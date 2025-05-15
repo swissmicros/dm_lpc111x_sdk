@@ -30,6 +30,11 @@
 #define FIRST_FONT font13x12s
 
 
+void wait_ms(int ms) {
+  systickDelay(ms);
+}
+
+
 void disp_two_lines(int i, char *s1, char *s2) {
   st7565ClearScreen();
   xGlcd_Write_Text(s1, i, 0, FIRST_FONT);
@@ -211,7 +216,7 @@ void get_firmware_str(char *str) {
 #define CLOCK_MODE_TIMEOUT  5*60 // seconds
 
 void display_clock() {
-  char s[30],t[8];
+  char s[30],t[30];
   int tout = CLOCK_MODE_TIMEOUT;
   int k1,k2;
   key_release();
@@ -221,35 +226,71 @@ void display_clock() {
     rtc_get_date_string(s);
     s[19]=0;
     strcpy(t+1,s+20);
+    sprintf(t+strlen(t), "       TIMEOUT:%i", tout);  // NO
     disp_two_lines(4, s, t);
     sleep_ds(0, WT_ALL_KEYS); // Wait for int from RTC or key press
     k1=k2=0;
     scan_key(&k1, &k2);
   } while( !k1 && tout--);
+  rtc_disable_int();
   key_release();
+}
+
+
+void blip() {
+  const int f = 1840; //1864;
+  beep(f,18*2); wait_ms(27);
+  beep(f,23*2); wait_ms(17);
+  beep(f,23*2); wait_ms(13);
+  beep(f,23*2); wait_ms(40);
+  beep(f,23*2); wait_ms(30);
 }
 
 
 void go_to_sleep() {
-  //int k1,k2;
-  key_release();
+  int k1=0,k2;
 
-  rtc_disable_int();
-  st7565TurnOff();
+  rtc_disable_int();       // No 1-sec RTC int in off mode
+  if ( read_rtcint_pin() ) // Handle pending RTC int
+    rtc_int();
 
-  sleep_ds(0, WT_ON);
-  if(!read_rtcint_pin()) // No sleep workaround 
+  while (k1 != 0x18) { // Accept wake-up only on ON-key
+    key_release();
+
+    st7565TurnOff();
+
     sleep_ds(0, WT_ON);
+  
+    k1=k2=0;
+    scan_key(&k1,&k2);
 
-  st7565Init();
-  st7565ClearScreen();
-  st7565Refresh();
+    st7565Init();
+
+#if 0
+    st7565ClearScreen();
+    xGlcd_Write_Text("WAKE-UP", 1, 0, FIRST_FONT);
+    st7565Refresh();
+    wait_ms(500);
+#endif
+  }
+
 }
 
 
 
+// RESET status value (SCB->SYSRSTSTAT)
+uint32_t SCB_RESETSTAT_backup;
+
+
 int main(void)
 {
+  // Force proper RESET (after start from bootloader) to avoid
+  // configuration problems
+  if ((SCB_RESETSTAT & 0x1f) == 0) SCB_AIRCR = SCB_AIRCR_SYSRESET;;
+  SCB_RESETSTAT_backup = SCB_RESETSTAT;
+  SCB_RESETSTAT = 0x1F;  // Reset RESET status
+
+
   // Configure cpu and mandatory peripherals
   systemInit();
   init_keyboard_pins();
@@ -276,24 +317,50 @@ int main(void)
   rtc_init();
 #endif
 
+  beep(1000,100); wait_ms(40); beep(1500,40); wait_ms(20); beep(1500,40);
+
   // Main loop
   {
     char s[40],t[40];
     int k1,k2;
+    const int AUTO_OFF_TIMEOUT = 2*60*2; // 2min
+    int auto_off = AUTO_OFF_TIMEOUT;
   
     for(;;) {
       k1=k2=0;
       scan_key(&k1,&k2);
-      if ( k1 == 0x18 )  go_to_sleep();
-      if ( k1 == 0x13 )  display_clock();
-      if ( k1 == 0x73 )  cmdLoop();
+      int k1rc = keycode2rc(k1);
+      int k2rc = keycode2rc(k2);
+      
+      if (k1rc == 0x41) go_to_sleep();    // ON
+      if (k1rc == 0x11) display_clock();  //  A
+      if (k1rc == 0x12) blip();           //  B
+      if (k1rc == 0x13) cmdLoop();        //  C
+      if (k1rc == 0x42 && k2rc == 0x14) start_isp(); // [f]+D
 
-      sprintf(s,"KEY: %02X - %02X",k1,k2);
+      sprintf(s,"KEY: %02X - %02X",k1rc,k2rc);
       get_firmware_str(t);
 
       disp_two_lines(2,s,t);
 
-      sleep_ds(6, WT_ALL_KEYS);  // wait 0.5s - not for key-press
+#if 1
+      sprintf(s, "OFF:%i:%X", auto_off, (int)SCB_RESETSTAT_backup);
+      xGlcd_Write_Text(s, 90, 0, font3x6);
+      st7565Refresh();
+#endif
+
+      // Auto-off handling
+      if (k1) {
+        auto_off = AUTO_OFF_TIMEOUT;
+      } else {
+        auto_off--;
+        if (auto_off <= 0) {
+          auto_off = AUTO_OFF_TIMEOUT;
+          go_to_sleep();
+        }
+      }
+
+      sleep_ds(6, WT_ALL_KEYS);  // wait 0.5s - or for key-press
     }
   }
 

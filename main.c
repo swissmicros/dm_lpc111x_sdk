@@ -100,6 +100,71 @@ void key_release() {
 }
 
 
+/* ============= ISP ================*/
+
+#define ENABLE_ISP
+#ifdef ENABLE_ISP
+
+#define IAP_ENTRY 0x1fff1ff1
+#define IAP_CMD_REINVOKE_ISP 57
+
+typedef void (*IAP)(unsigned int[], unsigned int[]);
+
+
+void start_isp() {
+  unsigned int cmd[1];
+  unsigned int stat[1];
+  IAP iap_entry = (IAP)IAP_ENTRY;
+
+  disp_two_lines(1,"BOOTLOADER READY","RESET TO ABORT");
+  systickDelay(100);
+
+  __disable_irq();
+
+#if 1 // Set clock to internal osc
+  // Using just internal osc for slow clock
+  SCB_MAINCLKSEL = SCB_CLKSEL_SOURCE_INTERNALOSC;
+
+  SCB_MAINCLKUEN = SCB_MAINCLKUEN_UPDATE;  // Update clock source
+  SCB_MAINCLKUEN = SCB_MAINCLKUEN_DISABLE; // Toggle update register once
+  SCB_MAINCLKUEN = SCB_MAINCLKUEN_UPDATE;
+
+  // Wait until the clock is updated
+  while (!(SCB_MAINCLKUEN & SCB_MAINCLKUEN_UPDATE));
+
+  // Set system AHB clock
+  SCB_SYSAHBCLKDIV = 1; // Divide by 1 == SCB_SYSAHBCLKDIV_DIV1;
+
+  // Enabled IOCON clock for I/O related peripherals
+  SCB_SYSAHBCLKCTRL |= SCB_SYSAHBCLKCTRL_IOCON;
+
+  // Disable system PLL for slow mode
+  SCB_PDRUNCFG |= SCB_PDRUNCFG_SYSPLL_MASK;
+#endif
+
+  cmd[0] = IAP_CMD_REINVOKE_ISP;
+  iap_entry(cmd,stat);
+  // shouldn't return
+}
+
+#endif // ENABLE_ISP
+
+
+#if 0 // Allows to program CRP
+#define NO_ISP 0x4E697370
+#define NO_CRP 0xFFFFFFFF
+
+__attribute__ ((section(".crp"))) const uint32_t CRP_WORD = 
+#ifdef DISABLE_DEFULAT_ISP_AFTER_RESET
+ NO_ISP;
+#else
+ NO_CRP;
+#endif
+#endif
+// ---
+
+
+
 // Serial console loop
 void cmdLoop() {
   int k1,k2;

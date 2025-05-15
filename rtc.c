@@ -43,6 +43,9 @@ void rtc_init() {
   rtc_update_sec(); // Handle interrupts and read current second
   rtc_ms_cnt = 0;
   rtc_last_ms_cnt = 1000;
+
+  rtc_enable_int();  // Force int configuration by enabling
+  rtc_disable_int(); // ... and disabling it
 }
 
 

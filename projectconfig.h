@@ -165,8 +165,8 @@
     FIRMWARE VERSION SETTINGS
     -----------------------------------------------------------------------*/
     #define CFG_FIRMWARE_VERSION_MAJOR            "DM_SDK"
-    #define CFG_FIRMWARE_VERSION_MINOR            ".00"
-    #define CFG_FIRMWARE_VERSION_REVISION         "V00"
+    #define CFG_FIRMWARE_VERSION_MINOR            ""
+    #define CFG_FIRMWARE_VERSION_REVISION         "V03"
     
 #define CFG_FIRMWARE_VERSION CFG_FIRMWARE_VERSION_MAJOR CFG_FIRMWARE_VERSION_MINOR
 

@@ -286,7 +286,7 @@ int main(void)
 {
   // Force proper RESET (after start from bootloader) to avoid
   // configuration problems
-  if ((SCB_RESETSTAT & 0x1f) == 0) SCB_AIRCR = SCB_AIRCR_SYSRESET;;
+  if ((SCB_RESETSTAT & 0x1f) == 0) SCB_AIRCR = SCB_AIRCR_SYSRESET;
   SCB_RESETSTAT_backup = SCB_RESETSTAT;
   SCB_RESETSTAT = 0x1F;  // Reset RESET status
 

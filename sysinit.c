@@ -56,7 +56,6 @@ void systemInit()
   // Initialise the ST7565 132x16 pixel display
   #ifdef CFG_ST7565
     st7565Init();
-    st7565ClearScreen();    // Clear the screen  
   #endif
 
   // Start the command line interface (if requested)

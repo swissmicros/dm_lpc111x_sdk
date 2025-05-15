@@ -26,6 +26,9 @@ void TIMER32_1_IRQHandler(void);
 extern volatile uint32_t timer32_0_counter;
 extern volatile uint32_t timer32_1_counter;
 
+#define CFG_BEEP
+void beep(int fr, int len);
+
 void timer32Delay(uint8_t timerNum, uint32_t delay);
 void timer32Enable(uint8_t timerNum);
 void timer32Disable(uint8_t timerNum);

@@ -77,6 +77,45 @@ void TIMER32_0_IRQHandler(void)
   return;
 }
 
+
+/**************************************************************************/
+/*! 
+        @brief Example of beep handling
+*/
+/**************************************************************************/
+#ifdef CFG_BEEP
+
+#include "core/cpu/cpu.h"
+
+volatile uint32_t spkr_state = 0;
+volatile uint32_t cnt_to_end = 0;
+
+void beep_stop() {
+  gpioSetValue(1, 1, 1); gpioSetValue(1, 2, 1); gpioSetDir(1, 1, 0); gpioSetDir(1, 2, 0);
+  timer32Disable(1);
+}
+
+void beep(int fr, int len) {
+  // Beeping using timer interrupt
+  {
+    IOCON_JTAG_TDO_PIO1_1 &= ~IOCON_JTAG_TDO_PIO1_1_FUNC_MASK;
+    IOCON_JTAG_TDO_PIO1_1 |=  IOCON_JTAG_TDO_PIO1_1_FUNC_GPIO;
+    IOCON_JTAG_nTRST_PIO1_2 &= ~IOCON_JTAG_nTRST_PIO1_2_FUNC_MASK;
+    IOCON_JTAG_nTRST_PIO1_2 |=  IOCON_JTAG_nTRST_PIO1_2_FUNC_GPIO;
+    gpioSetDir(1, 1, 1); gpioSetDir(1, 2, 1);
+  }
+  timer32Init(1, current_clock/fr);
+  timer32Reset(1);
+  cnt_to_end=len;
+  timer32Enable(1);
+  while(cnt_to_end);
+
+  beep_stop();
+}
+
+
+#endif
+
 /**************************************************************************/
 /*! 
         @brief Interrupt handler for 32-bit timer 1
@@ -90,6 +129,23 @@ void TIMER32_1_IRQHandler(void)
   /* If you wish to perform some action after each timer 'tick' (such as 
      incrementing a counter variable) you can do so here */
   timer32_1_counter++;
+
+#ifdef CFG_BEEP
+  if (cnt_to_end > 0) {
+    cnt_to_end--;
+
+    if (cnt_to_end) {
+      gpioSetValue(1, 1, spkr_state);
+      spkr_state = 1-spkr_state;
+      gpioSetValue(1, 2, spkr_state);
+    } else {
+      spkr_state = cnt_to_end;
+      gpioSetValue(1, 1, spkr_state);
+      gpioSetValue(1, 2, spkr_state);
+      timer32Disable(1);
+    }
+  }
+#endif
 
   return;
 }

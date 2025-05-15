@@ -5,7 +5,7 @@
 # The target, flash and ram of the LPC1xxx microprocessor.
 # Use for the target the value: LPC11xx, LPC13xx or LPC17xx
 TARGET = LPC11xx
-FLASH = 32K
+FLASH = 64K
 SRAM = 8K
 
 # For USB support the LPC1xxx reserves 384 bytes from the sram,
@@ -107,11 +107,11 @@ CFLAGSBASE += -fmerge-all-constants
 CFLAGSBASE += -D__NEWLIB__
 # -funroll-loops
 CFLAGSOPT+= $(CFLAGSBASE) -O2
-CFLAGS   += $(CFLAGSBASE) -Os
+CFLAGS   += $(CFLAGSBASE) -Os -g
 ASFLAGS = $(COMMONFLAGS) -D__ASSEMBLY__ -x assembler-with-cpp
 ASFLAGS += -Os
 LDFLAGS = -nostartfiles -mcpu=$(CPU_TYPE) -mthumb -Wl,--gc-sections
-OCFLAGS = --strip-unneeded
+OCFLAGS = --strip-unneeded  --set-start=0
 
 all: firmware
 
@@ -140,6 +140,6 @@ firmware: $(OBJS) $(SYS_OBJS)
 	-@echo ""
 	$(OBJCOPY) $(OCFLAGS) -O binary $(OUTFILE).elf $(OUTFILE).bin
 	$(OBJCOPY) $(OCFLAGS) -O ihex $(OUTFILE).elf $(OUTFILE).hex
-  
+
 clean:
 	rm -f $(OBJS) $(LD_TEMP) $(OUTFILE).*

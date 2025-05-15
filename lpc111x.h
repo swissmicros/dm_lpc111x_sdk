@@ -774,6 +774,12 @@
 #define SCB_ICSR_VECTPENDING_MASK                 ((unsigned int) 0x001FF000)
 #define SCB_ICSR_VECTACTIVE_MASK                  ((unsigned int) 0x000001FF)
 
+
+/*  Application Interrupt and Reset Control Register */
+
+#define SCB_AIRCR                                 (*(pREG32 (0xE000ED0C)))
+#define SCB_AIRCR_SYSRESET                        ((unsigned int) 0x05FA0004) // Write to RESET system
+
 /*  System Control Register */
 
 #define SCB_SCR                                   (*(pREG32 (0xE000ED10)))

@@ -12,7 +12,7 @@
 void pmuSetupHW();
 void pmuRestoreHW();
 
-
+volatile int pmu_not_slept = 0;
 
 /**************************************************************************/
 /*! 
@@ -114,6 +114,7 @@ void wakeup_setup() {
 
   // Time-out wakeup
   NVIC_DisableIRQ(WAKEUP9_IRQn);      // P0.9  (CT16B0_MAT1)
+  //NVIC_DisableIRQ(WAKEUP1_IRQn);      // P0.1  (CT32B0_MAT2)
 
   // No wakeup sources
   SCB_STARTERP0 = 0;
@@ -129,6 +130,7 @@ void wakeup_setup() {
 
   /* Clear the interrupt flag */
   TMR_TMR16B0IR = TMR_TMR16B0IR_MR0;
+  TMR_TMR32B0IR = TMR_TMR32B0IR_MR0;
 
   // Perform custom wakeup tasks
   pmuRestoreHW();
@@ -256,82 +258,18 @@ void pmuTmr0DeepSleep(uint32_t wakeup_dSec, uint8_t wakeup_type)
   if (wakeup_dSec)
   {
 
-#if 0 // 32B0_MAT3 pin 0_11 - possibly will be used in next hw revision
-
-    // Disable 32-bit timer 0 and 1 if currently in use
-    TMR_TMR32B0TCR = TMR_TMR32B0TCR_COUNTERENABLE_DISABLED;
-    TMR_TMR32B1TCR = TMR_TMR32B1TCR_COUNTERENABLE_DISABLED;
-
-    // Disable internal pullup on 0.1
-    gpioSetPullup(&IOCON_JTAG_TDI_PIO0_11, gpioPullupMode_Inactive);
-    gpioSetDir(0,11,0);
-    gpioSetValue(0,11,0);
-
-    /* Enable the clock for CT32B0 */
-    SCB_SYSAHBCLKCTRL |= (SCB_SYSAHBCLKCTRL_CT32B0);
-
-    /* Configure 0.1 as Timer0_32 MAT2 */
-    IOCON_JTAG_TDI_PIO0_11 &= ~IOCON_JTAG_TDI_PIO0_11_FUNC_MASK;
-    IOCON_JTAG_TDI_PIO0_11 |= IOCON_JTAG_TDI_PIO0_11_FUNC_CT32B0_MAT3;
-
-    /* Set appropriate timer delay */
-    TMR_TMR32B0MR0 = (PMU_WDTCLOCKSPEED_HZ/10) * wakeup_dSec;
-
-    /* Configure match control register to raise an interrupt and reset on MR0 */
-    TMR_TMR32B0MCR |= (TMR_TMR32B0MCR_MR0_INT_ENABLED | TMR_TMR32B0MCR_MR0_RESET_ENABLED);
-
-    /* Configure external match register to set 0.1 high on match */
-    TMR_TMR32B0EMR &= ~(0xFF<<4);                   // Clear EMR config bits
-    TMR_TMR32B0EMR |= TMR_TMR32B0EMR_EMC3_HIGH;     // Set MR3 (0.11) low on match
-
-    /* Enable wakeup interrupt (P0.1..11 and P1.0 can be used) */
-    //NVIC_EnableIRQ(WAKEUP0_IRQn);    // P0.0  
-    //NVIC_EnableIRQ(WAKEUP1_IRQn);    // P0.1  (CT32B0_MAT2)
-    //NVIC_EnableIRQ(WAKEUP2_IRQn);    // P0.2  
-    //NVIC_EnableIRQ(WAKEUP3_IRQn);    // P0.3  
-    //NVIC_EnableIRQ(WAKEUP4_IRQn);    // P0.4  
-    //NVIC_EnableIRQ(WAKEUP5_IRQn);    // P0.5  
-    //NVIC_EnableIRQ(WAKEUP6_IRQn);    // P0.6
-    //NVIC_EnableIRQ(WAKEUP7_IRQn);    // P0.7
-    //NVIC_EnableIRQ(WAKEUP8_IRQn);    // P0.8
-    //NVIC_EnableIRQ(WAKEUP9_IRQn);    // P0.9  
-    //NVIC_EnableIRQ(WAKEUP10_IRQn);   // P0.10  
-    NVIC_EnableIRQ(WAKEUP11_IRQn);     // P0.11 (CT32B0_MAT3)
-    //NVIC_EnableIRQ(WAKEUP12_IRQn);   // P1.0
-                
-    // Use RISING EDGE for wakeup detection. 
-    SCB_STARTAPRP0 |= SCB_STARTAPRP0_APRPIO0_11;
-
-    // Use FALLING EDGE for wakeup detection.
-    //SCB_STARTAPRP0 &= ~SCB_STARTAPRP0_APRPIO0_11;
-
-    /* Clear all wakeup sources */ 
-    //SCB_STARTRSRP0CLR = SCB_STARTRSRP0CLR_MASK;
-
-    /* Enable Port 0.11 as wakeup source. */
-    SCB_STARTERP0 |= SCB_STARTERP0_ERPIO0_11;
-
-    // Switch main clock to WDT output
-    SCB_MAINCLKSEL = SCB_MAINCLKSEL_SOURCE_WDTOSC;
-    SCB_MAINCLKUEN = SCB_MAINCLKUEN_UPDATE;       // Update clock source
-    SCB_MAINCLKUEN = SCB_MAINCLKUEN_DISABLE;      // Toggle update register once
-    SCB_MAINCLKUEN = SCB_MAINCLKUEN_UPDATE;
-
-    // Wait until the clock is updated
-    while (!(SCB_MAINCLKUEN & SCB_MAINCLKUEN_UPDATE));
-
-    /* Start the timer */
-    TMR_TMR32B0TCR = TMR_TMR32B0TCR_COUNTERENABLE_ENABLED;
-#endif
-
     // Disable timers
     TMR_TMR16B0TCR = TMR_TMR16B0TCR_COUNTERENABLE_DISABLED;
     TMR_TMR16B1TCR = TMR_TMR16B1TCR_COUNTERENABLE_DISABLED;
     TMR_TMR32B0TCR = TMR_TMR32B0TCR_COUNTERENABLE_DISABLED;
     TMR_TMR32B1TCR = TMR_TMR32B1TCR_COUNTERENABLE_DISABLED;
 
+#define WDT_BY_16B0_MAT1_PIN_0_9
+#ifdef WDT_BY_16B0_MAT1_PIN_0_9 // Original hardware
+
     // Disable internal pullup on 0.9
     gpioSetPullup(&IOCON_PIO0_9, gpioPullupMode_Inactive);
+    //gpioSetPullup(&IOCON_PIO0_9, gpioPullupMode_PullDown);
     gpioSetDir(0,9,0);
     gpioSetValue(0,9,0);
 
@@ -348,7 +286,6 @@ void pmuTmr0DeepSleep(uint32_t wakeup_dSec, uint8_t wakeup_type)
 
 
     /* Configure match control register to raise an interrupt and reset on MR0 */
-    //TMR_TMR16B0MCR |= (TMR_TMR16B0MCR_MR0_INT_ENABLED | TMR_TMR16B0MCR_MR0_RESET_ENABLED);
     TMR_TMR16B0MCR = TMR_TMR16B0MCR_MR0_INT_ENABLED
                    | TMR_TMR16B0MCR_MR0_RESET_ENABLED
                    ;
@@ -398,6 +335,9 @@ void pmuTmr0DeepSleep(uint32_t wakeup_dSec, uint8_t wakeup_type)
 
     /* Start the timer */
     TMR_TMR16B0TCR = TMR_TMR16B0TCR_COUNTERENABLE_ENABLED;
+#endif
+
+
   }
  
   /* Clear all wakeup sources */
@@ -407,13 +347,15 @@ void pmuTmr0DeepSleep(uint32_t wakeup_dSec, uint8_t wakeup_type)
   {
     volatile int w = wakeup_int_cnt;
     //dbg_send(0xeec);
+      pmu_not_slept = 0;
     __enable_irq();
     __asm volatile ("WFI");
     __asm volatile ("NOP");
-    if ( w == wakeup_int_cnt ) { // WFI not sleeped bug
+    if ( w == wakeup_int_cnt ) { // WFI not slept bug
       //dbg_send(0xeee);
       //__asm volatile ("WFI");
       // Reconfigure system clock/PLL
+      pmu_not_slept = 1;
       cpuSetClock(last_clock);
       wakeup_setup();
       //dbg_send(0xe0e);
@@ -426,7 +368,10 @@ void pmuTmr0DeepSleep(uint32_t wakeup_dSec, uint8_t wakeup_type)
 
 void sleep_ds(uint32_t val, uint8_t wakeup_type)
 {
-  pmuTmr0DeepSleep(val, wakeup_type);
+  for(int i=100; i--; ) { // Safety limit
+    pmuTmr0DeepSleep(val, wakeup_type);
+    if (pmu_not_slept == 0) break;
+  }
 }
 
 
@@ -446,13 +391,37 @@ void sleep_ds(uint32_t val, uint8_t wakeup_type)
     pmuInit();
   
     // Enter sleep mode
-    pmuSleep();
+    -pmuSleep();
     @endcode
 */
 /**************************************************************************/
 void pmuSleep()
 {
+  uint32_t regVal;
+  /*
+  3.9.2.2 Programming Sleep mode
+    The following steps must be performed to enter Sleep mode:
+      1. The DPDEN bit in the PCON register must be set to zero (Table 50).
+      2. The SLEEPDEEP bit in the ARM Cortex-M0 SCR register must be set to zero, see
+         (Table 453).
+      3. Use the ARM Cortex-M0 Wait-For-Interrupt (WFI) instruction.
+  */
+
+  // 1.
+  regVal = PMU_PMUCTRL;
+  regVal |= (0x1<<8);
+  regVal &= ~(
+              (PMU_PMUCTRL_DPDEN_SLEEP) |
+              (PMU_PMUCTRL_DPDFLAG));
+  PMU_PMUCTRL = regVal;
+
+  // 2.
+  SCB_SCR &= ~SCB_SCR_SLEEPDEEP;
+
+  // ??
   SCB_PDAWAKECFG = SCB_PDRUNCFG;
+
+  // 3.
   __asm volatile ("WFI");
   return;
 }
@@ -507,6 +476,7 @@ void pmuSleep()
     @endcode
 */
 /**************************************************************************/
+#if 0
 void pmuDeepSleep(uint32_t sleepCtrl, uint32_t wakeupMSec)
 {
   // Setup the board for deep sleep mode, shutting down certain
@@ -600,6 +570,7 @@ void pmuDeepSleep(uint32_t sleepCtrl, uint32_t wakeupMSec)
   __asm volatile ("WFI");
   return;
 }
+#endif
 
 /**************************************************************************/
 /*! 

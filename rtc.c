@@ -157,14 +157,14 @@ int rtc_read_sec() {
 
 
 
-void rtc_pool_int() {
+void rtc_poll_int() {
   if ( read_rtcint_pin() )
     rtc_int();
 }
 
 void rtc_update_sec() {
   tmr_stat.second_read = 0;
-  rtc_pool_int();
+  rtc_poll_int();
   if (!tmr_stat.second_read)
     rtc_read_sec();
 }
@@ -233,7 +233,7 @@ void rtc_update_status() {
 }
 
 int rtc_check_for_wakeup(int is_off) {
-  rtc_pool_int();
+  rtc_poll_int();
   // TODO: default RTC functionality?
   return 0;
 }

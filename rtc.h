@@ -74,7 +74,7 @@ extern volatile int rtc_ms_cnt;
 
 void rtc_ms_timer_start();
 void rtc_ms_timer_stop();
-void rtc_pool_int();
+void rtc_poll_int();
 
 int  rtc_check_for_wakeup(int is_off);
 void rtc_alarms_before_sleep(int is_off);

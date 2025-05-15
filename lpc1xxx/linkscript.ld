@@ -36,6 +36,12 @@ SECTIONS
   .text :
   {
     KEEP(*(.irq_vectors))
+    *(.text.I2C_IRQHandler)
+    *(.text.i2cInit)
+    . = 0x000002FC;
+     KEEP(*(.crp))
+    . = ALIGN(16);
+    *(.text.sendByte) /* Breaks sleep_ds if not aligned */
     *(.text*)
     *(.rodata*)
   } > flash

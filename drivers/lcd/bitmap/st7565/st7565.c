@@ -71,7 +71,7 @@ void writeBuffer(uint8_t *buffer)
   //int pagemap[] = { 0, 1};    // upside-down orientation
   int pp = LCD_X;
 
-  __disable_irq();
+  //__disable_irq();
   for(p = 0; p < 2; p++, pp+=LCD_X) 
   {
     int cc = pp-1;
@@ -86,7 +86,7 @@ void writeBuffer(uint8_t *buffer)
       //DATA(ReverseByteBits(buffer[cc]));  //upside-down orientation
     }
   }
-  __enable_irq();
+  //__enable_irq();
 }
 
 /**************************************************************************/
